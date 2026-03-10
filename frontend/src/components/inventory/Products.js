@@ -145,7 +145,13 @@ function Products() {
                     <Table>
                         <TableHead>
                             <TableRow>
-                                <TableCell>SKU</TableCell><TableCell>Name</TableCell><TableCell>Category</TableCell><TableCell align="right">Price</TableCell><TableCell align="right">Stock</TableCell><TableCell>Status</TableCell><TableCell align="right">Actions</TableCell>
+                                <TableCell>SKU</TableCell>
+                                <TableCell>Name</TableCell>
+                                <TableCell>Category</TableCell>
+                                <TableCell align="right">Price</TableCell>
+                                <TableCell align="right">Stock</TableCell>
+                                <TableCell>Status</TableCell>
+                                <TableCell align="right">Actions</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -154,9 +160,17 @@ function Products() {
                                     <TableCell><Typography variant="body2" fontFamily="monospace">{p.sku}</Typography></TableCell>
                                     <TableCell><Typography fontWeight={500}>{p.name}</Typography></TableCell>
                                     <TableCell>{p.category_name}</TableCell>
-                                    <TableCell align="right">₱{parseFloat(p.price).toFixed(2)}</TableCell>
+                                    <TableCell align="right">₱{Number(p.price).toFixed(2)}</TableCell>
                                     <TableCell align="right"><Chip label={p.stock} color={getStockColor(p.stock, p.low_stock_threshold)} size="small" /></TableCell>
-                                    <TableCell>{p.is_low_stock && <Chip icon={<Warning />} label="Low Stock" color="warning" size="small" />}</TableCell>
+                                    <TableCell>
+                                        {p.stock === 0 ? (
+                                            <Chip label="Out of Stock" color="error" size="small" />
+                                        ) : p.is_low_stock ? (
+                                            <Chip icon={<Warning />} label="Low Stock" color="warning" size="small" />
+                                        ) : (
+                                            <Chip label="In Stock" color="success" size="small" />
+                                        )}
+                                    </TableCell>
                                     <TableCell align="right">
                                         <IconButton color="primary" onClick={() => handleOpenDialog(p)} size="small"><Edit /></IconButton>
                                         <IconButton color="error" onClick={() => handleDelete(p.id, p.name)} size="small"><Delete /></IconButton>
