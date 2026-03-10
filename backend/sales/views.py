@@ -1,7 +1,7 @@
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from django.db import transaction
+from django.db import transaction, models
 from decimal import Decimal
 from .models import Sale, SaleItem
 from inventory.models import Product
