@@ -6,6 +6,10 @@ from decimal import Decimal
 from .models import Sale, SaleItem
 from inventory.models import Product
 from .serializers import SaleSerializer, CreateSaleSerializer
+from django.db.models import Sum, Count
+from django.utils import timezone
+from datetime import timedelta
+from inventory.models import Category
 
 @api_view(['POST'])
 @transaction.atomic
@@ -86,3 +90,64 @@ def sale_detail(request, pk):
         return Response({'error': 'Sale not found'}, status=status.HTTP_404_NOT_FOUND)
     serializer = SaleSerializer(sale)
     return Response(serializer.data)
+
+@api_view(['GET'])
+def dashboard_stats(request):
+    today = timezone.now().date()
+    week_ago = today - timedelta(days=7)
+    month_ago = today - timedelta(days=30)
+    
+    today_sales = Sale.objects.filter(created_at__date=today).aggregate(
+        total=Sum('total'), count=Count('id')
+    )
+    week_sales = Sale.objects.filter(created_at__date__gte=week_ago).aggregate(
+        total=Sum('total'), count=Count('id')
+    )
+    month_sales = Sale.objects.filter(created_at__date__gte=month_ago).aggregate(
+        total=Sum('total'), count=Count('id')
+    )
+    
+    total_products = Product.objects.count()
+    low_stock_products = Product.objects.filter(stock__lte=models.F('low_stock_threshold')).count()
+    out_of_stock = Product.objects.filter(stock=0).count()
+    
+    categories = Category.objects.annotate(product_count=Count('products')).values('name', 'product_count')
+    
+    top_products = Product.objects.annotate(
+        sold_quantity=Sum('sale_items__quantity')
+    ).order_by('-sold_quantity')[:5]
+    top_products_data = []
+    for p in top_products:
+        if p.sold_quantity:
+            top_products_data.append({
+                'name': p.name,
+                'sold': p.sold_quantity,
+                'revenue': float(p.sold_quantity) * float(p.price)
+            })
+    
+    recent_sales = Sale.objects.order_by('-created_at')[:10]
+    recent_sales_data = []
+    for s in recent_sales:
+        recent_sales_data.append({
+            'invoice': s.invoice_number,
+            'total': float(s.total),
+            'items': s.items.count(),
+            'time': s.created_at.strftime('%H:%M'),
+            'cashier': s.cashier_name
+        })
+    
+    return Response({
+        'sales': {
+            'today': {'total': float(today_sales['total'] or 0), 'count': today_sales['count'] or 0},
+            'this_week': {'total': float(week_sales['total'] or 0), 'count': week_sales['count'] or 0},
+            'this_month': {'total': float(month_sales['total'] or 0), 'count': month_sales['count'] or 0}
+        },
+        'products': {
+            'total': total_products,
+            'low_stock': low_stock_products,
+            'out_of_stock': out_of_stock
+        },
+        'categories': list(categories),
+        'top_products': top_products_data,
+        'recent_sales': recent_sales_data
+    })
